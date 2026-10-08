@@ -64,6 +64,24 @@ Set the value of the `DISCORDO_TOKEN` environment variable to the authentication
 DISCORDO_TOKEN="OTI2MDU5NTQxNDE2Nzc5ODA2.Yc2KKA.2iZ-5JxgxG-9Ub8GHzBSn-NJjNg" discordo
 ```
 
+## Low-data fork
+
+Image previews are off by default. To enable them, set `preview = true` in `[attachments]`.
+
+Downloaded history and incoming gateway messages are saved in an account-specific bbolt database. This includes messages received in other channels, whether or not they produce a notification. Cached history is reused across channel switches and restarts; missing ranges and newer messages are fetched as needed. Edits received while connected update messages in the active memory cache. Received deletions also remove the saved messages.
+
+Message databases are stored in:
+
+- Linux/BSD: `$XDG_DATA_HOME/discordo/messages/<user-id>.db`, or `~/.local/share/discordo/messages/<user-id>.db`
+- macOS: `~/Library/Application Support/discordo/messages/<user-id>.db`
+- Windows: `%AppData%/discordo/messages/<user-id>.db`
+
+Writes use synced transactions, including message rows and history coverage. On Unix, the database files have mode `0600` and their directory has mode `0700`. Storage errors appear in the message pane footer and the log.
+
+Messages and notification-setting changes arrive through Discord's live gateway. Guild/channel notification settings configured on the phone or web apply here too. Desktop popups require terminal notification support. Phone-specific push delivery and idle timing are separate from desktop notifications.
+
+Reaction updates are discarded before state handling; reactions are neither displayed nor stored. Discord may still send their gateway payloads.
+
 ## Configuration
 
 The configuration file allows you to configure and customize the behavior, keybindings, and theme of the application.

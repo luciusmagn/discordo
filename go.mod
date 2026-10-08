@@ -29,6 +29,7 @@ require (
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	github.com/yuin/goldmark v1.8.6
 	github.com/zalando/go-keyring v0.2.8
+	go.etcd.io/bbolt v1.5.0
 	golang.design/x/clipboard v0.11.0
 	golang.org/x/image v0.46.0
 )

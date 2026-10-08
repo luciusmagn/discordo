@@ -17,6 +17,7 @@ import (
 	"github.com/ayn2op/discordo/internal/config"
 	"github.com/ayn2op/discordo/internal/consts"
 	clientgateway "github.com/ayn2op/discordo/internal/gateway"
+	"github.com/ayn2op/discordo/internal/history"
 	"github.com/ayn2op/discordo/internal/http"
 	"github.com/ayn2op/discordo/internal/ui"
 	"github.com/ayn2op/discordo/internal/ui/chat/attachmentspicker"
@@ -60,8 +61,9 @@ type Model struct {
 	// windowUnfocused reports whether the terminal window lost focus.
 	windowUnfocused bool
 
-	state  *ningen.State
-	events chan gateway.Event
+	state   *ningen.State
+	history *history.Client
+	events  chan gateway.Event
 
 	// typers maps the users typing in the selected channel to when their typing indicator expires.
 	typers map[discord.UserID]time.Time
@@ -97,8 +99,13 @@ func NewModel(cfg *config.Config, token string) Model {
 	state := state.NewFromSession(session, defaultstore.New())
 	m.state = ningen.FromState(state)
 
+	m.history = history.NewClient(m.state, "")
 	m.events = make(chan gateway.Event)
-	m.state.AddChanHandler(m.events)
+	m.state.AddHandler(func(event gateway.Event) {
+		if !clientgateway.IsIgnored(event) {
+			m.events <- event
+		}
+	})
 	m.state.StateLog = func(err error) {
 		slog.Error("state log", "err", err)
 	}
@@ -110,6 +117,8 @@ func NewModel(cfg *config.Config, token string) Model {
 	m.composer = composer.NewModel(cfg, m.state)
 	m.channelsPicker = channelspicker.NewModel(cfg)
 	m.attachmentsPicker = attachmentspicker.NewModel(cfg)
+	m.guildsTree.SetHistory(m.history)
+	m.messagesList.SetHistory(m.history)
 
 	m.guildsTreeVisible = cfg.Sidebar.Visible
 	m.membersTreeVisible = cfg.MembersTree.Visible
@@ -258,7 +267,7 @@ func (m Model) Update(msg tview.Msg) (Model, tview.Cmd) {
 		m.messagesList.ShowNewest()
 		return m, nil
 	case QuitMsg:
-		return m, closeState(m.state)
+		return m, closeState(m.state, m.history)
 	case tview.KeyMsg:
 		switch {
 		case keybind.Matches(msg, m.cfg.Keybinds.FocusGuildsTree.Keybind):
@@ -292,7 +301,7 @@ func (m Model) Update(msg tview.Msg) (Model, tview.Cmd) {
 			return m, nil
 
 		case keybind.Matches(msg, m.cfg.Keybinds.Logout.Keybind):
-			return m, tview.Sequence(closeState(m.state), logout())
+			return m, tview.Sequence(closeState(m.state, m.history), logout())
 		}
 	case composer.TabSuggestMsg, mentionslist.Msg:
 		return m, m.updatePane(paneComposer, msg)
@@ -384,7 +393,13 @@ func (m Model) paneView(p pane) tview.Widget {
 	case paneGuildsTree:
 		child = m.guildsTree.View(focused)
 	case paneMessagesList:
-		child = m.messagesList.View(focused, m.typingFooter())
+		footer := m.typingFooter()
+		if m.history != nil {
+			if err := m.history.Err(); err != nil {
+				footer = "Message cache error: " + err.Error()
+			}
+		}
+		child = m.messagesList.View(focused, footer)
 	case paneComposer:
 		child = m.composer.View(focused)
 	case paneMembersTree:

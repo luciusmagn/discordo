@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"os"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -19,6 +18,7 @@ import (
 	md "github.com/ayn2op/arikawa/v3/markdown"
 	"github.com/ayn2op/arikawa/v3/state"
 	"github.com/ayn2op/discordo/internal/config"
+	"github.com/ayn2op/discordo/internal/history"
 	"github.com/ayn2op/discordo/internal/markdown"
 	"github.com/ayn2op/discordo/internal/ui"
 	"github.com/ayn2op/ningen/v3"
@@ -49,8 +49,9 @@ type messageItem struct {
 type Model struct {
 	selectionState list.SelectionState
 
-	cfg   *config.Config
-	state *ningen.State
+	cfg     *config.Config
+	state   *ningen.State
+	history *history.Client
 	// channel is the selected channel, or nil for none.
 	channel *discord.Channel
 	items   []messageItem
@@ -77,6 +78,11 @@ func NewModel(cfg *config.Config, state *ningen.State) Model {
 
 	ml.selectionState.ScrollToEnd()
 	return ml
+}
+
+// SetHistory enables persistent loading of older messages.
+func (m *Model) SetHistory(cache *history.Client) {
+	m.history = cache
 }
 
 // View shows the messages in a box titled with the channel and footed with footer, such as who is typing.
@@ -415,30 +421,6 @@ func (m Model) writeMessage(builder *richtext.Builder, message discord.Message, 
 	default:
 		m.drawTimestamps(builder, message.Timestamp, baseStyle)
 		m.drawAuthor(builder, message, baseStyle)
-	}
-	m.drawReactions(builder, message.Reactions, baseStyle)
-}
-
-func (m Model) drawReactions(builder *richtext.Builder, reactions []discord.Reaction, baseStyle tview.Style) {
-	if len(reactions) == 0 {
-		return
-	}
-
-	builder.NewLine()
-	for i, reaction := range reactions {
-		if i > 0 {
-			builder.Write("  ", baseStyle)
-		}
-
-		name := reaction.Emoji.Name
-		if reaction.Emoji.IsCustom() {
-			name = ":" + name + ":"
-		}
-		style := m.cfg.Theme.MessagesList.ReactionStyle.Style
-		if reaction.Me {
-			style = m.cfg.Theme.MessagesList.OwnReactionStyle.Style
-		}
-		builder.Write(name+" "+strconv.Itoa(reaction.Count), tview.MergeStyle(baseStyle, style))
 	}
 }
 

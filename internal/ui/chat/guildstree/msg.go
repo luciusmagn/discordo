@@ -4,6 +4,7 @@ import (
 	"log/slog"
 
 	"github.com/ayn2op/arikawa/v3/discord"
+	"github.com/ayn2op/discordo/internal/history"
 	"github.com/ayn2op/discordo/internal/ui"
 	"github.com/ayn2op/ningen/v3"
 	"github.com/ayn2op/tview"
@@ -68,7 +69,7 @@ func (m Model) selectNode(node *tree.Node) tview.Cmd {
 			return nil
 		}
 		if channel.Type != discord.GuildForum {
-			return loadChannel(m.state, uint(m.cfg.MessagesLimit), *channel)
+			return loadChannel(m.state, m.history, uint(m.cfg.MessagesLimit), *channel)
 		}
 		channels, err := m.state.Cabinet.Channels(channel.GuildID)
 		if err != nil {
@@ -96,9 +97,13 @@ func (m Model) selectNode(node *tree.Node) tview.Cmd {
 	return nil
 }
 
-func loadChannel(state *ningen.State, limit uint, channel discord.Channel) tview.Cmd {
+func loadChannel(state *ningen.State, cache *history.Client, limit uint, channel discord.Channel) tview.Cmd {
 	return func() tview.Msg {
-		messages, err := state.Messages(channel.ID, limit)
+		fetch := state.Messages
+		if cache != nil {
+			fetch = cache.Messages
+		}
+		messages, err := fetch(channel.ID, limit)
 		if err != nil {
 			slog.Error("failed to get messages", "err", err, "channel_id", channel.ID, "limit", limit)
 			return nil

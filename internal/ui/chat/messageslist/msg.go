@@ -75,7 +75,11 @@ func (m Model) fetchOlderMessages() tview.Cmd {
 	before := m.items[first].message.ID
 	limit := uint(m.cfg.MessagesLimit)
 	return func() tview.Msg {
-		messages, err := m.state.MessagesBefore(channelID, before, limit)
+		fetch := m.state.MessagesBefore
+		if m.history != nil {
+			fetch = m.history.MessagesBefore
+		}
+		messages, err := fetch(channelID, before, limit)
 		if err != nil {
 			slog.Error("failed to fetch older messages", "err", err)
 			return nil

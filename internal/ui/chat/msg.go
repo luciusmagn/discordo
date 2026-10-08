@@ -7,6 +7,7 @@ import (
 
 	"github.com/ayn2op/arikawa/v3/discord"
 	"github.com/ayn2op/arikawa/v3/gateway"
+	"github.com/ayn2op/discordo/internal/history"
 	"github.com/ayn2op/discordo/internal/ui/chat/composer"
 	"github.com/ayn2op/discordo/internal/ui/chat/guildstree"
 	"github.com/ayn2op/ningen/v3"
@@ -22,13 +23,18 @@ func openState(state *ningen.State) tview.Cmd {
 	}
 }
 
-func closeState(state *ningen.State) tview.Cmd {
+func closeState(state *ningen.State, cache *history.Client) tview.Cmd {
 	if state == nil {
 		return nil
 	}
 	return func() tview.Msg {
 		if err := state.Close(); err != nil {
 			slog.Error("failed to close the session", "err", err)
+		}
+		if cache != nil {
+			if err := cache.Close(); err != nil {
+				slog.Error("failed to close message cache", "err", err)
+			}
 		}
 		return nil
 	}

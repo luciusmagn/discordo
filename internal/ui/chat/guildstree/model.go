@@ -7,6 +7,7 @@ import (
 	"github.com/ayn2op/arikawa/v3/discord"
 	"github.com/ayn2op/arikawa/v3/gateway"
 	"github.com/ayn2op/discordo/internal/config"
+	"github.com/ayn2op/discordo/internal/history"
 	"github.com/ayn2op/discordo/internal/ui"
 	uitree "github.com/ayn2op/discordo/internal/ui/tree"
 	"github.com/ayn2op/ningen/v3"
@@ -23,8 +24,9 @@ type Model struct {
 	root           *tree.Node
 	selectionState tree.SelectionState
 
-	cfg   *config.Config
-	state *ningen.State
+	cfg     *config.Config
+	state   *ningen.State
+	history *history.Client
 
 	// nodes indexes the guild and channel nodes for frequent event handlers (read updates, picker navigation).
 	// It mirrors the current rendered tree and is rebuilt on READY before nodes are added.
@@ -39,6 +41,11 @@ func NewModel(cfg *config.Config, state *ningen.State) Model {
 		state: state,
 		nodes: make(map[discord.Snowflake]*tree.Node),
 	}
+}
+
+// SetHistory enables persistent message loading for channel navigation.
+func (m *Model) SetHistory(cache *history.Client) {
+	m.history = cache
 }
 
 // CurrentNode returns the selected node, or nil for none.
