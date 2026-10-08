@@ -40,12 +40,10 @@ func (m *Model) addMessageOrNotify(message *gateway.MessageCreateEvent) tview.Cm
 
 func (m Model) notify(message gateway.MessageCreateEvent) tview.Cmd {
 	return func() tview.Msg {
-		if !m.cfg.Notifications.Enabled || m.cfg.Status == discord.DoNotDisturbStatus {
+		if m.cfg.Status == discord.DoNotDisturbStatus {
 			return nil
 		}
-
-		mentions := m.state.MessageMentions(&message.Message)
-		if mentions == 0 {
+		if !m.shouldNotify(&message.Message) {
 			return nil
 		}
 
@@ -115,16 +113,10 @@ func (m *Model) applyEvent(event gateway.Event) tview.Cmd {
 		return m.updatePane(paneMembersTree, event)
 	case *gateway.MessageDeleteEvent:
 		m.messagesList.DeleteMessage(event.ChannelID, event.ID)
-	case *gateway.MessageReactionAddEvent:
-		m.messagesList.RefreshMessage(event.ChannelID, event.MessageID)
-	case *gateway.MessageReactionAddManyEvent:
-		m.messagesList.RefreshMessage(event.ChannelID, event.MessageID)
-	case *gateway.MessageReactionRemoveEvent:
-		m.messagesList.RefreshMessage(event.ChannelID, event.MessageID)
-	case *gateway.MessageReactionRemoveAllEvent:
-		m.messagesList.RefreshMessage(event.ChannelID, event.MessageID)
-	case *gateway.MessageReactionRemoveEmojiEvent:
-		m.messagesList.RefreshMessage(event.ChannelID, event.MessageID)
+	case *gateway.MessageDeleteBulkEvent:
+		for _, id := range event.IDs {
+			m.messagesList.DeleteMessage(event.ChannelID, id)
+		}
 
 	case *gateway.GuildMembersChunkEvent:
 		return m.refreshMemberNames(event)
