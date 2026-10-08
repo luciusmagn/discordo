@@ -235,7 +235,7 @@ func Default() Config {
 		Attachments: AttachmentsConfig{
 			ShowLinks:        true,
 			AllowedMIMETypes: MIMETypes{"image/*", "video/*"},
-			Preview:          true,
+			Preview:          false,
 			Protocol:         "auto",
 		},
 

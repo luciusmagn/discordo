@@ -58,7 +58,7 @@ Default: `["image/*", "video/*"]`
 
 Whether to draw image attachments and embedded images below their messages.
 
-Default: `true`
+Default: `false`
 
 ## attachments.protocol
 
